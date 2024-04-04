@@ -59,7 +59,7 @@ class BPlusTreeInternalPage : public BPlusTreePage {
    * @param key The new value for key
    */
   void SetKeyAt(int index, const KeyType &key);
-
+  void SetValueAt(int index, const ValueType &value);
   /**
    *
    * @param value the value to search for
@@ -98,6 +98,9 @@ class BPlusTreeInternalPage : public BPlusTreePage {
 
     return kstr;
   }
+
+  // NOTE(talps): helper func
+  auto MoveKV(int dest, int start, int length) -> bool;
 
  private:
   // Flexible array member for page data.

@@ -17,6 +17,7 @@
 #include <queue>
 #include <shared_mutex>
 #include <string>
+#include <tuple>
 #include <vector>
 
 #include "common/config.h"
@@ -138,6 +139,15 @@ class BPlusTree {
   int leaf_max_size_;
   int internal_max_size_;
   page_id_t header_page_id_;
+
+  // NOTE:Talps write
+  // helper member
+  auto SearchLeaf(const KeyType &key, page_id_t page_id) -> page_id_t;
+  auto SplitLeaf(Context &ctx, LeafPage *old_page, const KeyType &key, const ValueType &value)
+      -> std::tuple<KeyType, page_id_t, page_id_t>;
+  auto SplitInternal(Context &ctx, InternalPage *old_page, const KeyType &key, const page_id_t &value)
+      -> std::tuple<KeyType, page_id_t, page_id_t>;
+  void DeleteEntry(Context &, page_id_t, const KeyType &);
 };
 
 /**
@@ -146,8 +156,10 @@ class BPlusTree {
  */
 struct PrintableBPlusTree {
   int size_;
+  page_id_t page_id_;
   std::string keys_;
   std::vector<PrintableBPlusTree> children_;
+  std::vector<page_id_t> children_page_;
 
   /**
    * @brief BFS traverse a printable B+ tree and print it into
@@ -163,7 +175,7 @@ struct PrintableBPlusTree {
       for (auto &t : que) {
         int padding = (t->size_ - t->keys_.size()) / 2;
         out_buf << std::string(padding, ' ');
-        out_buf << t->keys_;
+        out_buf << t->page_id_ << " " << t->keys_;
         out_buf << std::string(padding, ' ');
 
         for (auto &c : t->children_) {
