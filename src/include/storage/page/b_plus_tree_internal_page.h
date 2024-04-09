@@ -13,6 +13,7 @@
 #include <queue>
 #include <string>
 
+#include "storage/index/index_iterator.h"
 #include "storage/page/b_plus_tree_page.h"
 
 namespace bustub {

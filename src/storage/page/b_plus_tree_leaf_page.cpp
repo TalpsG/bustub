@@ -33,9 +33,6 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size) {
 
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_LEAF_PAGE_TYPE::MoveKV(int dest, int start, int length) -> bool {
-  if (start + length > GetSize()) {
-    return false;
-  }
   MappingType temp[length];
   for (int i = 0; i < length; ++i) {
     temp[i].first = KeyAt(start + i);
@@ -51,6 +48,8 @@ INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::SetKey(int index, const KeyType &key) { array_[index].first = key; }
 INDEX_TEMPLATE_ARGUMENTS
 void B_PLUS_TREE_LEAF_PAGE_TYPE::SetValue(int index, const ValueType &value) { array_[index].second = value; }
+INDEX_TEMPLATE_ARGUMENTS
+auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetPair(int index) const -> const MappingType & { return array_[index]; }
 
 /**
  * Helper methods to set/get next page id

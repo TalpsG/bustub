@@ -64,6 +64,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto MoveKV(int dest, int start, int length) -> bool;
   void SetKey(int index, const KeyType &key);
   void SetValue(int index, const ValueType &value);
+  auto GetPair(int index) const -> const MappingType &;
 
   /**
    * @brief for test only return a string representing all keys in

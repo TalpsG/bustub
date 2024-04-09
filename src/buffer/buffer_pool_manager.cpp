@@ -12,8 +12,7 @@
 
 #include "buffer/buffer_pool_manager.h"
 #include <cstddef>
-#include <iostream>
-#include <stdexcept>
+#include <cstdlib>
 
 #include "common/config.h"
 #include "storage/page/page_guard.h"
@@ -244,5 +243,10 @@ auto BufferPoolManager::FetchPageWrite(page_id_t page_id) -> WritePageGuard {
 }
 
 auto BufferPoolManager::NewPageGuarded(page_id_t *page_id) -> BasicPageGuard { return {this, NewPage(page_id)}; }
+auto BufferPoolManager::NewPageWriteGuarded(page_id_t *page_id) -> WritePageGuard {
+  auto p = NewPage(page_id);
+  p->WLatch();
+  return {this, p};
+}
 
 }  // namespace bustub

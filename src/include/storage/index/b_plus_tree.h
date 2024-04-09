@@ -55,6 +55,8 @@ class Context {
   std::deque<ReadPageGuard> read_set_;
 
   auto IsRootPage(page_id_t page_id) -> bool { return page_id == root_page_id_; }
+
+  bool is_lock_{false};
 };
 
 #define BPLUSTREE_TYPE BPlusTree<KeyType, ValueType, KeyComparator>
@@ -142,12 +144,15 @@ class BPlusTree {
 
   // NOTE:Talps write
   // helper member
-  auto SearchLeaf(const KeyType &key, page_id_t page_id) -> page_id_t;
+  enum class SearchType { READ, WRITE };
+  auto SearchLeafRead(Context &ctx, const KeyType &key, page_id_t page_id) -> page_id_t;
+  auto SearchLeafInsert(Context &ctx, const KeyType &key, page_id_t page_id) -> page_id_t;
+  auto SearchLeafRemove(Context &ctx, const KeyType &key, page_id_t page_id) -> page_id_t;
   auto SplitLeaf(Context &ctx, LeafPage *old_page, const KeyType &key, const ValueType &value)
       -> std::tuple<KeyType, page_id_t, page_id_t>;
   auto SplitInternal(Context &ctx, InternalPage *old_page, const KeyType &key, const page_id_t &value)
       -> std::tuple<KeyType, page_id_t, page_id_t>;
-  void DeleteEntry(Context &, page_id_t, const KeyType &);
+  void DeleteEntry(Context &ctx, page_id_t page_id, const KeyType &key);
 };
 
 /**

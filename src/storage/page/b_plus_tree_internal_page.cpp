@@ -55,9 +55,6 @@ auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::ValueAt(int index) const -> ValueType { ret
 // helper
 INDEX_TEMPLATE_ARGUMENTS
 auto B_PLUS_TREE_INTERNAL_PAGE_TYPE::MoveKV(int dest, int start, int length) -> bool {
-  if (start + length > GetSize()) {
-    return false;
-  }
   MappingType temp[length];
   for (int i = 0; i < length; ++i) {
     temp[i].first = KeyAt(start + i);
