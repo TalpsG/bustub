@@ -1,6 +1,7 @@
 /**
  * index_iterator.cpp
  */
+#include <iostream>
 #include <utility>
 #include "buffer/buffer_pool_manager.h"
 #include "common/config.h"
@@ -18,32 +19,40 @@ INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator() = default;
 
 INDEX_TEMPLATE_ARGUMENTS
-INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *bpm, ReadPageGuard &&rpg, int pos)
-    : bpm_(bpm), rpg_(std::move(rpg)), page_(rpg_.As<LeafPage>()), pos_(pos) {}
+INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *bpm, page_id_t page_id, int pos)
+    : bpm_(bpm), page_id_(page_id), pos_(pos) {
+  if (page_id == INVALID_PAGE_ID) {
+    pos_ = -1;
+    return;
+  }
+  rpg_.emplace_back(bpm->FetchPageRead(page_id));
+  page_ = rpg_.front().As<LeafPage>();
+}
 INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::~IndexIterator() = default;  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::IsEnd() -> bool {
-  return page_->GetNextPageId() == INVALID_PAGE_ID && pos_ == page_->GetSize();
-}
+auto INDEXITERATOR_TYPE::IsEnd() -> bool { return page_id_ == INVALID_PAGE_ID; }
 
 INDEX_TEMPLATE_ARGUMENTS auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { return page_->GetPair(pos_); }
 
 INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
-  if (page_->GetNextPageId() == INVALID_PAGE_ID) {
-    if (page_->GetSize() != pos_) {
-      pos_ += 1;
+  if (IsEnd()) {
+    pos_ = -1;
+    return *this;
+  }
+  ++pos_;
+  if (pos_ == page_->GetSize()) {
+    page_id_ = page_->GetNextPageId();
+    if (page_id_ == INVALID_PAGE_ID) {
+      pos_ = -1;
+      return *this;
     }
-  } else {
-    pos_ += 1;
-    if (page_->GetSize() == pos_) {
-      rpg_ = bpm_->FetchPageRead(page_->GetNextPageId());
-      pos_ = 0;
-    } else {
-      pos_ += 1;
-    }
+    rpg_.emplace_back(bpm_->FetchPageRead(page_id_));
+    rpg_.pop_front();
+    page_ = rpg_.back().As<LeafPage>();
+    pos_ = 0;
   }
   // TODO(talps):
   return *this;

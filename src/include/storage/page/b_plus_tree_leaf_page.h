@@ -60,11 +60,22 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto KeyAt(int index) const -> KeyType;
   // NOTE:
   // talps code
-  auto ValueAt(int index) const -> ValueType;
-  auto MoveKV(int dest, int start, int length) -> bool;
-  void SetKey(int index, const KeyType &key);
-  void SetValue(int index, const ValueType &value);
-  auto GetPair(int index) const -> const MappingType &;
+  auto ValueAt(int index) const -> ValueType { return array_[index].second; }
+  auto MoveKV(int dest, int start, int length) -> bool {
+    MappingType temp[length];
+    for (int i = 0; i < length; ++i) {
+      temp[i].first = KeyAt(start + i);
+      temp[i].second = ValueAt(start + i);
+    }
+    for (int i = 0; i < length; ++i) {
+      array_[dest + i].first = temp[i].first;
+      array_[dest + i].second = temp[i].second;
+    }
+    return true;
+  }
+  void SetKey(int index, const KeyType &key) { array_[index].first = key; }
+  void SetValue(int index, const ValueType &value) { array_[index].second = value; }
+  auto GetPair(int index) const -> const MappingType & { return array_[index]; }
 
   /**
    * @brief for test only return a string representing all keys in

@@ -31,26 +31,6 @@ void B_PLUS_TREE_LEAF_PAGE_TYPE::Init(int max_size) {
   SetSize(0);
 }
 
-INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::MoveKV(int dest, int start, int length) -> bool {
-  MappingType temp[length];
-  for (int i = 0; i < length; ++i) {
-    temp[i].first = KeyAt(start + i);
-    temp[i].second = ValueAt(start + i);
-  }
-  for (int i = 0; i < length; ++i) {
-    array_[dest + i].first = temp[i].first;
-    array_[dest + i].second = temp[i].second;
-  }
-  return true;
-}
-INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::SetKey(int index, const KeyType &key) { array_[index].first = key; }
-INDEX_TEMPLATE_ARGUMENTS
-void B_PLUS_TREE_LEAF_PAGE_TYPE::SetValue(int index, const ValueType &value) { array_[index].second = value; }
-INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::GetPair(int index) const -> const MappingType & { return array_[index]; }
-
 /**
  * Helper methods to set/get next page id
  */
@@ -74,8 +54,4 @@ template class BPlusTreeLeafPage<GenericKey<8>, RID, GenericComparator<8>>;
 template class BPlusTreeLeafPage<GenericKey<16>, RID, GenericComparator<16>>;
 template class BPlusTreeLeafPage<GenericKey<32>, RID, GenericComparator<32>>;
 template class BPlusTreeLeafPage<GenericKey<64>, RID, GenericComparator<64>>;
-// NOTE:
-// talps code
-INDEX_TEMPLATE_ARGUMENTS
-auto B_PLUS_TREE_LEAF_PAGE_TYPE::ValueAt(int index) const -> ValueType { return array_[index].second; }
 }  // namespace bustub

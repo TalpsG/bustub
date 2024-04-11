@@ -40,6 +40,12 @@ class GenericKey {
     memset(data_, 0, KeySize);
     memcpy(data_, &key, sizeof(int64_t));
   }
+  inline auto GetFromData() const -> int64_t {
+    int64_t ans;
+    memset(&ans, 0, sizeof(int64_t));
+    memcpy(&ans, data_, sizeof(int64_t));
+    return ans;
+  }
 
   inline auto ToValue(Schema *schema, uint32_t column_idx) const -> Value {
     const char *data_ptr;

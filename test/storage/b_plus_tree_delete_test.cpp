@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <cstdio>
 #include <iostream>
+#include <vector>
 
 #include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
@@ -245,6 +246,7 @@ TEST(BPlusTreeTests, DeleteTest4) {
   auto *transaction = new Transaction(0);
 
   std::vector<int64_t> keys = {12, 2, 10, 8, 7, 9, 13, 14, 1, 5, 11, 3, 4, 6, 15};
+  auto delete_keys = keys;
 
   for (auto key : keys) {
     int64_t value = key & 0xFFFFFFFF;
@@ -265,15 +267,21 @@ TEST(BPlusTreeTests, DeleteTest4) {
     EXPECT_EQ(rids[0].GetSlotNum(), value);
   }
 
-  for (auto key : keys) {
-    std::cout << "key: " << key << '\n';
+  for (auto key : delete_keys) {
+    std::cout << "remove key: " << key << '\n';
     index_key.SetFromInteger(key);
     tree.Remove(index_key, transaction);
     std::cout << tree.DrawBPlusTree();
-  }
-  std::cout << "tree:\n";
-  std::cout << tree.DrawBPlusTree();
 
+    std::cout << "tree:\n";
+    std::cout << tree.DrawBPlusTree();
+    std::cout << "iter\n";
+
+    for (auto iter = tree.Begin(); iter != tree.End(); ++iter) {
+      std::cout << (*iter).second.GetSlotNum() << " ";
+    }
+    std::cout << "\n";
+  }
   int64_t size = 0;
   bool is_present;
 

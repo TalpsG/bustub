@@ -53,6 +53,7 @@ class BPlusTreePage {
   void IncreaseSize(int amount);
 
   auto GetMaxSize() const -> int;
+  auto GetRealMax() const -> int;
   void SetMaxSize(int max_size);
   auto GetMinSize() const -> int;
 

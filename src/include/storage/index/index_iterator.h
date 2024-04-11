@@ -13,7 +13,9 @@
  * For range scan of b+ tree
  */
 #pragma once
+#include <deque>
 #include "buffer/buffer_pool_manager.h"
+#include "common/config.h"
 #include "storage/page/b_plus_tree_leaf_page.h"
 #include "storage/page/page_guard.h"
 
@@ -28,7 +30,7 @@ class IndexIterator {
  public:
   // you may define your own constructor based on your member variables
   IndexIterator();
-  IndexIterator(BufferPoolManager *bpm, ReadPageGuard &&rpg, int pos);
+  IndexIterator(BufferPoolManager *bpm, page_id_t page_id, int pos);
   ~IndexIterator();  // NOLINT
 
   auto IsEnd() -> bool;
@@ -37,14 +39,15 @@ class IndexIterator {
 
   auto operator++() -> IndexIterator &;
 
-  auto operator==(const IndexIterator &itr) const -> bool { return (page_ == itr.page_ && pos_ == itr.pos_); }
+  auto operator==(const IndexIterator &itr) const -> bool { return (page_id_ == itr.page_id_ && pos_ == itr.pos_); }
 
   auto operator!=(const IndexIterator &itr) const -> bool { return !operator==(itr); }
 
  private:
   // add your own private member variables here
   BufferPoolManager *bpm_;
-  ReadPageGuard rpg_;
+  std::deque<ReadPageGuard> rpg_;
+  page_id_t page_id_;
   const LeafPage *page_;
   int pos_;
 };

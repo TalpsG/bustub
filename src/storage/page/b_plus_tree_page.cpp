@@ -10,6 +10,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "storage/page/b_plus_tree_page.h"
+#include <iostream>
 
 namespace bustub {
 
@@ -32,12 +33,23 @@ void BPlusTreePage::IncreaseSize(int amount) { size_ += amount; }
  * Helper methods to get/set max size (capacity) of the page
  */
 auto BPlusTreePage::GetMaxSize() const -> int { return max_size_; }
+auto BPlusTreePage::GetRealMax() const -> int {
+  if (IsLeafPage()) {
+    return max_size_ - 1;
+  }
+  return max_size_;
+}
 void BPlusTreePage::SetMaxSize(int size) { max_size_ = size; }
 
 /*
  * Helper method to get min page size
  * Generally, min page size == max page size / 2
  */
-auto BPlusTreePage::GetMinSize() const -> int { return (max_size_ + 1) / 2; }
+auto BPlusTreePage::GetMinSize() const -> int {
+  if (IsLeafPage()) {
+    return max_size_ / 2;
+  }
+  return (max_size_ + 1) / 2;
+}
 
 }  // namespace bustub

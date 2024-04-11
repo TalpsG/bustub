@@ -18,6 +18,7 @@
 #include <shared_mutex>
 #include <string>
 #include <tuple>
+#include <utility>
 #include <vector>
 
 #include "common/config.h"
@@ -150,9 +151,10 @@ class BPlusTree {
   auto SearchLeafRemove(Context &ctx, const KeyType &key, page_id_t page_id) -> page_id_t;
   auto SplitLeaf(Context &ctx, LeafPage *old_page, const KeyType &key, const ValueType &value)
       -> std::tuple<KeyType, page_id_t, page_id_t>;
-  auto SplitInternal(Context &ctx, InternalPage *old_page, const KeyType &key, const page_id_t &value)
+  auto SplitInternal(Context &ctx, InternalPage *old_page, std::tuple<KeyType, page_id_t, page_id_t> k_p_p)
       -> std::tuple<KeyType, page_id_t, page_id_t>;
   void DeleteEntry(Context &ctx, page_id_t page_id, const KeyType &key);
+  auto InsertParent(Context &ctx, std::tuple<KeyType, page_id_t, page_id_t> k_p_p);
 };
 
 /**
@@ -180,7 +182,7 @@ struct PrintableBPlusTree {
       for (auto &t : que) {
         int padding = (t->size_ - t->keys_.size()) / 2;
         out_buf << std::string(padding, ' ');
-        out_buf << t->page_id_ << " " << t->keys_;
+        out_buf << t->keys_;
         out_buf << std::string(padding, ' ');
 
         for (auto &c : t->children_) {
