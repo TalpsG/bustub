@@ -59,6 +59,9 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
 
+  auto SetKeyAt(int index, const KeyType &key) { array_[index].first = key; }
+  auto SetValueAt(int index, ValueType value) { array_[index].second = value; }
+  auto PairAt(int index) const -> const MappingType & { return array_[index]; }
   /**
    * @brief for test only return a string representing all keys in
    * this leaf page formatted as "(key1,key2,key3,...)"

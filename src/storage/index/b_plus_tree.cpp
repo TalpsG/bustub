@@ -1,6 +1,7 @@
 #include <sstream>
 #include <string>
 
+#include "common/config.h"
 #include "common/exception.h"
 #include "common/logger.h"
 #include "common/rid.h"
@@ -26,7 +27,7 @@ BPLUSTREE_TYPE::BPlusTree(std::string name, page_id_t header_page_id, BufferPool
  * Helper function to decide whether current b+tree is empty
  */
 INDEX_TEMPLATE_ARGUMENTS
-auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return true; }
+auto BPLUSTREE_TYPE::IsEmpty() const -> bool { return header_page_id_ == INVALID_PAGE_ID; }
 /*****************************************************************************
  * SEARCH
  *****************************************************************************/
@@ -169,12 +170,12 @@ void BPLUSTREE_TYPE::PrintTree(page_id_t page_id, const BPlusTreePage *page) {
         std::cout << ", ";
       }
     }
-    std::cout << std::endl;
-    std::cout << std::endl;
+    std::cout << '\n';
+    std::cout << '\n';
 
   } else {
     auto *internal = reinterpret_cast<const InternalPage *>(page);
-    std::cout << "Internal Page: " << page_id << std::endl;
+    std::cout << "Internal Page: " << page_id << '\n';
 
     // Print the contents of the internal page.
     std::cout << "Contents: ";
@@ -184,8 +185,8 @@ void BPLUSTREE_TYPE::PrintTree(page_id_t page_id, const BPlusTreePage *page) {
         std::cout << ", ";
       }
     }
-    std::cout << std::endl;
-    std::cout << std::endl;
+    std::cout << '\n';
+    std::cout << '\n';
     for (int i = 0; i < internal->GetSize(); i++) {
       auto guard = bpm_->FetchPageBasic(internal->ValueAt(i));
       PrintTree(guard.PageId(), guard.template As<BPlusTreePage>());
@@ -204,11 +205,11 @@ void BPLUSTREE_TYPE::Draw(BufferPoolManager *bpm, const std::string &outf) {
   }
 
   std::ofstream out(outf);
-  out << "digraph G {" << std::endl;
+  out << "digraph G {" << '\n';
   auto root_page_id = GetRootPageId();
   auto guard = bpm->FetchPageBasic(root_page_id);
   ToGraph(guard.PageId(), guard.template As<BPlusTreePage>(), out);
-  out << "}" << std::endl;
+  out << "}" << '\n';
   out.close();
 }
 
