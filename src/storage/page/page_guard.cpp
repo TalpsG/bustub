@@ -59,7 +59,15 @@ BasicPageGuard::~BasicPageGuard() {
   bpm_ = nullptr;
 };  // NOLINT
 
-ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept = default;
+ReadPageGuard::ReadPageGuard(ReadPageGuard &&that) noexcept {
+  if (&that == this) {
+    return;
+  }
+  if (guard_.page_ != nullptr) {
+    guard_.page_->RUnlatch();
+  }
+  guard_ = std::move(that.guard_);
+}
 
 auto ReadPageGuard::operator=(ReadPageGuard &&that) noexcept -> ReadPageGuard & {
   // 构造时会自动上锁，因此此处直接移动即可。
@@ -108,7 +116,15 @@ ReadPageGuard::~ReadPageGuard() {
   guard_.is_dirty_ = false;
 }  // NOLINT
 
-WritePageGuard::WritePageGuard(WritePageGuard &&that) noexcept = default;
+WritePageGuard::WritePageGuard(WritePageGuard &&that) noexcept {
+  if (&that == this) {
+    return;
+  }
+  if (guard_.page_ != nullptr) {
+    guard_.page_->WUnlatch();
+  }
+  guard_ = std::move(that.guard_);
+}
 
 auto WritePageGuard::operator=(WritePageGuard &&that) noexcept -> WritePageGuard & {
   if (&that == this) {

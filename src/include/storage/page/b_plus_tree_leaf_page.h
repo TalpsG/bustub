@@ -58,6 +58,7 @@ class BPlusTreeLeafPage : public BPlusTreePage {
   auto GetNextPageId() const -> page_id_t;
   void SetNextPageId(page_id_t next_page_id);
   auto KeyAt(int index) const -> KeyType;
+  auto ValueAt(int index) const -> ValueType { return array_[index].second; }
 
   auto SetKeyAt(int index, const KeyType &key) { array_[index].first = key; }
   auto SetValueAt(int index, ValueType value) { array_[index].second = value; }

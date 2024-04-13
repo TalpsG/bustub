@@ -10,10 +10,16 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include <algorithm>
 #include <chrono>  // NOLINT
+#include <cstdint>
 #include <cstdio>
+#include <fstream>
 #include <functional>
+#include <iostream>
 #include <thread>  // NOLINT
+#include <unordered_set>
+#include <vector>
 
 #include "buffer/buffer_pool_manager.h"
 #include "gtest/gtest.h"
@@ -83,6 +89,7 @@ void DeleteHelper(BPlusTree<GenericKey<8>, RID, GenericComparator<8>> *tree, con
   auto *transaction = new Transaction(0);
   for (auto key : remove_keys) {
     index_key.SetFromInteger(key);
+    std::cout << key << "\n";
     tree->Remove(index_key, transaction);
   }
   delete transaction;
@@ -122,7 +129,217 @@ void LookupHelper(BPlusTree<GenericKey<8>, RID, GenericComparator<8>> *tree, con
   delete transaction;
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest1) {
+TEST(BPlusTreeConcurrentTest, talps_concurrent_insert1) {
+  // create KeyComparator and index schema
+  auto key_schema = ParseCreateStatement("a bigint");
+  GenericComparator<8> comparator(key_schema.get());
+
+  auto disk_manager = std::make_unique<DiskManagerUnlimitedMemory>();
+  auto *bpm = new BufferPoolManager(50, disk_manager.get());
+  // create and fetch header_page
+  page_id_t page_id;
+  auto header_page = bpm->NewPage(&page_id);
+  // create b+ tree
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator, 5, 8);
+  // keys to Insert
+  std::vector<std::vector<int64_t>> keys;
+  std::vector<int64_t> all_keys;
+  int threads_num = 8;
+  keys.reserve(threads_num);
+  for (int i = 0; i < threads_num; i++) {
+    keys.emplace_back();
+  }
+
+  int64_t scale_factor = 100000;
+  for (int64_t key = 1; key < scale_factor; key++) {
+    keys[key % threads_num].push_back(key);
+    all_keys.push_back(key);
+  }
+
+  auto insert_task_0 = [&](int tid) { InsertHelper(&tree, keys[0], tid); };
+  auto insert_task_1 = [&](int tid) { InsertHelper(&tree, keys[1], tid); };
+  auto insert_task_2 = [&](int tid) { InsertHelper(&tree, keys[2], tid); };
+  auto insert_task_3 = [&](int tid) { InsertHelper(&tree, keys[3], tid); };
+  auto insert_task_4 = [&](int tid) { InsertHelper(&tree, keys[4], tid); };
+  auto insert_task_5 = [&](int tid) { InsertHelper(&tree, keys[5], tid); };
+  auto insert_task_6 = [&](int tid) { InsertHelper(&tree, keys[6], tid); };
+  auto insert_task_7 = [&](int tid) { InsertHelper(&tree, keys[7], tid); };
+
+  std::vector<std::thread> threads;
+  std::vector<std::function<void(int)>> tasks;
+  tasks.reserve(threads_num);
+  tasks.emplace_back(insert_task_0);
+  tasks.emplace_back(insert_task_1);
+  tasks.emplace_back(insert_task_2);
+  tasks.emplace_back(insert_task_3);
+  tasks.emplace_back(insert_task_4);
+  tasks.emplace_back(insert_task_5);
+  tasks.emplace_back(insert_task_6);
+  tasks.emplace_back(insert_task_7);
+
+  threads.reserve(threads_num);
+  for (int i = 0; i < threads_num; i++) {
+    threads.emplace_back(tasks[i % tasks.size()], i);
+  }
+  for (int i = 0; i < threads_num; i++) {
+    threads[i].join();
+  }
+
+  std::vector<RID> rids;
+  GenericKey<8> index_key;
+  for (auto key : all_keys) {
+    rids.clear();
+    index_key.SetFromInteger(key);
+    tree.GetValue(index_key, &rids);
+    std::cout << key << "\n";
+    EXPECT_EQ(rids.size(), 1);
+
+    int64_t value = key & 0xFFFFFFFF;
+    EXPECT_EQ(rids[0].GetSlotNum(), value);
+  }
+  std::ofstream ofs("treemap");
+  ofs << tree.DrawBPlusTree();
+  ofs.close();
+
+  bpm->UnpinPage(HEADER_PAGE_ID, true);
+  delete bpm;
+}
+TEST(BPlusTreeConcurrentTest, talps_seq_delete) {
+  // create KeyComparator and index schema
+  auto key_schema = ParseCreateStatement("a bigint");
+  GenericComparator<8> comparator(key_schema.get());
+
+  auto disk_manager = std::make_unique<DiskManagerUnlimitedMemory>();
+  auto *bpm = new BufferPoolManager(50, disk_manager.get());
+  // create and fetch header_page
+  page_id_t page_id;
+  auto header_page = bpm->NewPage(&page_id);
+  // create b+ tree
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator, 5, 8);
+  // keys to Insert
+  std::vector<int64_t> keys_delet;
+  std::unordered_set<int64_t> perserved_keys;
+  std::vector<int64_t> all_keys;
+
+  int64_t scale_factor = 200;
+  for (int64_t key = 1; key < scale_factor; key++) {
+    if (key % 2 == 1) {
+      perserved_keys.insert(key);
+    } else {
+      keys_delet.push_back(key);
+    }
+    all_keys.push_back(key);
+  }
+
+  InsertHelper(&tree, all_keys, 1);
+  std::cout << tree.DrawBPlusTree();
+
+  DeleteHelper(&tree, keys_delet);
+  std::vector<RID> rids;
+  GenericKey<8> index_key;
+  auto size = 0;
+  for (auto key : perserved_keys) {
+    rids.clear();
+    index_key.SetFromInteger(key);
+    tree.GetValue(index_key, &rids);
+
+    std::cout << key << "\n";
+    EXPECT_EQ(rids.size(), 1);
+    size++;
+    int64_t value = key & 0xFFFFFFFF;
+    EXPECT_EQ(rids[0].GetSlotNum(), value);
+  }
+  EXPECT_EQ(size, perserved_keys.size());
+  std::ofstream ofs("treemap");
+  ofs << tree.DrawBPlusTree();
+  ofs.close();
+
+  bpm->UnpinPage(HEADER_PAGE_ID, true);
+  delete bpm;
+}
+TEST(BPlusTreeConcurrentTest, talps_concurrent_delete) {
+  // create KeyComparator and index schema
+  auto key_schema = ParseCreateStatement("a bigint");
+  GenericComparator<8> comparator(key_schema.get());
+
+  auto disk_manager = std::make_unique<DiskManagerUnlimitedMemory>();
+  auto *bpm = new BufferPoolManager(50, disk_manager.get());
+  // create and fetch header_page
+  page_id_t page_id;
+  auto header_page = bpm->NewPage(&page_id);
+  // create b+ tree
+  BPlusTree<GenericKey<8>, RID, GenericComparator<8>> tree("foo_pk", header_page->GetPageId(), bpm, comparator, 5, 8);
+  // keys to Insert
+  std::vector<std::vector<int64_t>> keys_delet;
+  std::unordered_set<int64_t> perserved_keys;
+  std::vector<int64_t> all_keys;
+  int threads_num = 5;
+  keys_delet.reserve(threads_num);
+  for (int i = 0; i < threads_num; i++) {
+    keys_delet.emplace_back();
+  }
+
+  int64_t scale_factor = 10000;
+  for (int64_t key = 1; key < scale_factor; key++) {
+    if (key % 6 == 5) {
+      perserved_keys.insert(key);
+    } else {
+      keys_delet[key % 5].push_back(key);
+    }
+    all_keys.push_back(key);
+  }
+
+  InsertHelper(&tree, all_keys, 1);
+  auto delete_task_0 = [&](int tid) { DeleteHelper(&tree, keys_delet[0], tid); };
+  auto delete_task_1 = [&](int tid) { DeleteHelper(&tree, keys_delet[1], tid); };
+  auto delete_task_2 = [&](int tid) { DeleteHelper(&tree, keys_delet[2], tid); };
+  auto delete_task_3 = [&](int tid) { DeleteHelper(&tree, keys_delet[3], tid); };
+  auto delete_task_4 = [&](int tid) { DeleteHelper(&tree, keys_delet[4], tid); };
+
+  std::vector<std::thread> threads;
+  std::vector<std::function<void(int)>> tasks;
+  tasks.reserve(threads_num);
+  tasks.emplace_back(delete_task_0);
+  tasks.emplace_back(delete_task_1);
+  tasks.emplace_back(delete_task_2);
+  tasks.emplace_back(delete_task_3);
+  tasks.emplace_back(delete_task_4);
+
+  threads.reserve(threads_num);
+  for (int i = 0; i < threads_num; i++) {
+    threads.emplace_back(tasks[i % tasks.size()], i);
+  }
+  for (int i = 0; i < threads_num; i++) {
+    threads[i].join();
+  }
+
+  std::vector<RID> rids;
+  GenericKey<8> index_key;
+  auto size = 0;
+  for (auto key : perserved_keys) {
+    rids.clear();
+    index_key.SetFromInteger(key);
+    tree.GetValue(index_key, &rids);
+
+    std::cout << key << "\n";
+    if (perserved_keys.count(key) != 0U) {
+      EXPECT_EQ(rids.size(), 1);
+      size++;
+      int64_t value = key & 0xFFFFFFFF;
+      EXPECT_EQ(rids[0].GetSlotNum(), value);
+    } else {
+      EXPECT_EQ(rids.size(), 1);
+    }
+  }
+  EXPECT_EQ(size, perserved_keys.size());
+  std::ofstream ofs("treemap");
+  ofs << tree.DrawBPlusTree();
+  ofs.close();
+
+  bpm->UnpinPage(HEADER_PAGE_ID, true);
+  delete bpm;
+}
+TEST(BPlusTreeConcurrentTest, InsertTest1) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -170,7 +387,7 @@ TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest1) {
   delete bpm;
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest2) {
+TEST(BPlusTreeConcurrentTest, InsertTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -217,7 +434,7 @@ TEST(BPlusTreeConcurrentTest, DISABLED_InsertTest2) {
   delete bpm;
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest1) {
+TEST(BPlusTreeConcurrentTest, DeleteTest1) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -256,7 +473,7 @@ TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest1) {
   delete bpm;
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest2) {
+TEST(BPlusTreeConcurrentTest, DeleteTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -295,7 +512,7 @@ TEST(BPlusTreeConcurrentTest, DISABLED_DeleteTest2) {
   delete bpm;
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_MixTest1) {
+TEST(BPlusTreeConcurrentTest, MixTest1) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -336,7 +553,7 @@ TEST(BPlusTreeConcurrentTest, DISABLED_MixTest1) {
   delete bpm;
 }
 
-TEST(BPlusTreeConcurrentTest, DISABLED_MixTest2) {
+TEST(BPlusTreeConcurrentTest, MixTest2) {
   // create KeyComparator and index schema
   auto key_schema = ParseCreateStatement("a bigint");
   GenericComparator<8> comparator(key_schema.get());
@@ -380,7 +597,7 @@ TEST(BPlusTreeConcurrentTest, DISABLED_MixTest2) {
 
   size_t num_threads = 6;
   for (size_t i = 0; i < num_threads; i++) {
-    threads.emplace_back(std::thread{tasks[i % tasks.size()], i});
+    threads.emplace_back(tasks[i % tasks.size()], i);
   }
   for (size_t i = 0; i < num_threads; i++) {
     threads[i].join();

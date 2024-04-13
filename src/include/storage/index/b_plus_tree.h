@@ -11,7 +11,9 @@
 #pragma once
 
 #include <algorithm>
+#include <atomic>
 #include <deque>
+#include <fstream>
 #include <iostream>
 #include <optional>
 #include <queue>
@@ -74,8 +76,10 @@ class BPlusTree {
 
   // Insert a key-value pair into this B+ tree.
   auto Insert(const KeyType &key, const ValueType &value, Transaction *txn = nullptr) -> bool;
+  auto InsertParent(Context &ctx, page_id_t old_value, page_id_t new_value, const KeyType &key);
 
   // Remove a key and its value from this B+ tree.
+  void DeleteEntry(Context &ctx, const KeyType &key);
   void Remove(const KeyType &key, Transaction *txn);
 
   // Return the value associated with a given key
@@ -95,7 +99,7 @@ class BPlusTree {
   void Print(BufferPoolManager *bpm);
 
   // Draw the B+ tree
-  void Draw(BufferPoolManager *bpm, const std::string &outf);
+  void Draw(BufferPoolManager *bpm, std::ofstream &out);
 
   /**
    * @brief draw a B+ tree, below is a printed
@@ -148,6 +152,7 @@ struct PrintableBPlusTree {
   int size_;
   std::string keys_;
   std::vector<PrintableBPlusTree> children_;
+  page_id_t page_id_;
 
   /**
    * @brief BFS traverse a printable B+ tree and print it into

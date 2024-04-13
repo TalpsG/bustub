@@ -49,6 +49,7 @@ class BPlusTreePage {
   void SetPageType(IndexPageType page_type);
 
   auto GetSize() const -> int;
+  auto GetRealMax() const -> int;
   void SetSize(int size);
   void IncreaseSize(int amount);
 

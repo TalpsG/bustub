@@ -2,6 +2,9 @@
  * index_iterator.cpp
  */
 #include <cassert>
+#include <utility>
+#include "common/config.h"
+#include "storage/page/page_guard.h"
 
 #include "storage/index/index_iterator.h"
 
@@ -15,16 +18,42 @@ INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::IndexIterator() = default;
 
 INDEX_TEMPLATE_ARGUMENTS
+INDEXITERATOR_TYPE::IndexIterator(BufferPoolManager *bpm, page_id_t page_id, int pos)
+    : bpm_(bpm), page_id_(page_id), pos_(pos) {
+  if (page_id_ == INVALID_PAGE_ID) {
+    return;
+  }
+  rpg_ = bpm_->FetchPageRead(page_id_);
+  page_ = rpg_.As<LeafPage>();
+}
+INDEX_TEMPLATE_ARGUMENTS
 INDEXITERATOR_TYPE::~IndexIterator() = default;  // NOLINT
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::IsEnd() -> bool { throw std::runtime_error("unimplemented"); }
+auto INDEXITERATOR_TYPE::IsEnd() -> bool { return page_id_ == INVALID_PAGE_ID && pos_ == -1; }
 
 INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { throw std::runtime_error("unimplemented"); }
+auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { return page_->PairAt(pos_); }
 
-INDEX_TEMPLATE_ARGUMENTS
-auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & { throw std::runtime_error("unimplemented"); }
+INDEX_TEMPLATE_ARGUMENTS auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {
+  if (page_id_ == INVALID_PAGE_ID) {
+    return *this;
+  }
+  pos_++;
+  if (pos_ == page_->GetSize()) {
+    if (page_->GetNextPageId() == INVALID_PAGE_ID) {
+      page_ = nullptr;
+      pos_ = -1;
+      page_id_ = INVALID_PAGE_ID;
+    } else {
+      rpg_ = std::move(bpm_->FetchPageRead(page_->GetNextPageId()));
+      page_ = rpg_.As<LeafPage>();
+      pos_ = 0;
+      page_id_ = rpg_.PageId();
+    }
+  }
+  return *this;
+}
 
 template class IndexIterator<GenericKey<4>, RID, GenericComparator<4>>;
 
