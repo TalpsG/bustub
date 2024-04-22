@@ -342,7 +342,9 @@ void BPLUSTREE_TYPE::DeleteEntry(Context &ctx, const KeyType &key) {
     leaf_page->IncreaseSize(-1);
     if (leaf_page->GetSize() == 0 && now_id == ctx.root_page_id_) {
       // 如果删除的叶子没有元素且是根节点，则直接清空树
-      ctx.header_page_->AsMut<BPlusTreeHeaderPage>()->root_page_id_ = INVALID_PAGE_ID;
+      if (ctx.header_page_.has_value()) {
+        ctx.header_page_->AsMut<BPlusTreeHeaderPage>()->root_page_id_ = INVALID_PAGE_ID;
+      }
       ctx.write_set_.pop_back();
       return;
     }
@@ -366,7 +368,9 @@ void BPLUSTREE_TYPE::DeleteEntry(Context &ctx, const KeyType &key) {
     // now如果是internal节点且只有一个孩子，则直接让孩子是根
     if (internal_page->GetSize() == 1 && ctx.root_page_id_ == now_id) {
       // TODO(talps) :移动孩子直接变成根
-      ctx.header_page_->AsMut<BPlusTreeHeaderPage>()->root_page_id_ = internal_page->ValueAt(0);
+      if (ctx.header_page_.has_value()) {
+        ctx.header_page_->AsMut<BPlusTreeHeaderPage>()->root_page_id_ = internal_page->ValueAt(0);
+      }
       ctx.write_set_.back().Drop();
       ctx.write_set_.pop_back();
       return;
@@ -502,9 +506,6 @@ void BPLUSTREE_TYPE::DeleteEntry(Context &ctx, const KeyType &key) {
         }
       }
     }
-  }
-  while (!ctx.write_set_.empty()) {
-    ctx.write_set_.pop_back();
   }
 }
 INDEX_TEMPLATE_ARGUMENTS

@@ -47,4 +47,4 @@
  * Extending the directory implementation to span multiple pages would be a meaningful improvement to the
  * implementation.
  */
-#define DIRECTORY_ARRAY_SIZE 512
+#define DIRECTORY_ARRAY_SIZE 512  // NOLINT

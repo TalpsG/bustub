@@ -56,7 +56,7 @@ BustubInstance::BustubInstance(const std::string &db_file_name) {
   try {
     buffer_pool_manager_ = new BufferPoolManager(128, disk_manager_, LRUK_REPLACER_K, log_manager_);
   } catch (NotImplementedException &e) {
-    std::cerr << "BufferPoolManager is not implemented, only mock tables are supported." << std::endl;
+    std::cerr << "BufferPoolManager is not implemented, only mock tables are supported." << '\n';
     buffer_pool_manager_ = nullptr;
   }
 
@@ -96,7 +96,7 @@ BustubInstance::BustubInstance() {
   try {
     buffer_pool_manager_ = new BufferPoolManager(128, disk_manager_, LRUK_REPLACER_K, log_manager_);
   } catch (NotImplementedException &e) {
-    std::cerr << "BufferPoolManager is not implemented, only mock tables are supported." << std::endl;
+    std::cerr << "BufferPoolManager is not implemented, only mock tables are supported." << '\n';
     buffer_pool_manager_ = nullptr;
   }
 

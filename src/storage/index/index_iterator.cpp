@@ -33,6 +33,18 @@ INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::IsEnd() -> bool { return page_id_ == INVALID_PAGE_ID && pos_ == -1; }
 
 INDEX_TEMPLATE_ARGUMENTS
+auto INDEXITERATOR_TYPE::operator=(IndexIterator &&iter) noexcept -> IndexIterator & {
+  if (&iter == this) {
+    return *this;
+  }
+  this->page_id_ = iter.page_id_;
+  this->pos_ = iter.pos_;
+  this->bpm_ = iter.bpm_;
+  this->page_ = iter.page_;
+  this->rpg_ = std::move(iter.rpg_);
+  return *this;
+}
+INDEX_TEMPLATE_ARGUMENTS
 auto INDEXITERATOR_TYPE::operator*() -> const MappingType & { return page_->PairAt(pos_); }
 
 INDEX_TEMPLATE_ARGUMENTS auto INDEXITERATOR_TYPE::operator++() -> INDEXITERATOR_TYPE & {

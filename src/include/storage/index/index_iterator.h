@@ -33,6 +33,7 @@ class IndexIterator {
 
   auto IsEnd() -> bool;
 
+  auto operator=(IndexIterator &&iter) noexcept -> IndexIterator &;
   auto operator*() -> const MappingType &;
 
   auto operator++() -> IndexIterator &;

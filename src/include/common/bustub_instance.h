@@ -93,11 +93,11 @@ class SimpleStreamWriter : public ResultWriter {
   void BeginHeader() override {}
   void EndHeader() override {
     if (!disable_header_) {
-      stream_ << std::endl;
+      stream_ << '\n';
     }
   }
   void BeginRow() override {}
-  void EndRow() override { stream_ << std::endl; }
+  void EndRow() override { stream_ << '\n'; }
   void BeginTable(bool simplified_output) override {}
   void EndTable() override {}
 

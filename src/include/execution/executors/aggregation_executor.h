@@ -24,6 +24,9 @@
 #include "execution/expressions/abstract_expression.h"
 #include "execution/plans/aggregation_plan.h"
 #include "storage/table/tuple.h"
+#include "type/type.h"
+#include "type/type_id.h"
+#include "type/value.h"
 #include "type/value_factory.h"
 
 namespace bustub {
@@ -73,12 +76,62 @@ class SimpleAggregationHashTable {
   void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
       switch (agg_types_[i]) {
-        case AggregationType::CountStarAggregate:
-        case AggregationType::CountAggregate:
-        case AggregationType::SumAggregate:
-        case AggregationType::MinAggregate:
-        case AggregationType::MaxAggregate:
+        case AggregationType::CountStarAggregate: {
+          result->aggregates_.emplace_back(TypeId::INTEGER, input.aggregates_.size());
           break;
+        }
+        case AggregationType::CountAggregate: {
+          if (input.aggregates_.empty()) {
+            result->aggregates_.emplace_back(TypeId::INTEGER, BUSTUB_INT32_NULL);
+            break;
+          }
+          int n = 0;
+          for (const auto &v : input.aggregates_) {
+            if (!v.IsNull()) {
+              n++;
+            }
+          }
+          result->aggregates_.emplace_back(TypeId::INTEGER, n);
+          break;
+        }
+        case AggregationType::SumAggregate: {
+          if (input.aggregates_.empty()) {
+            result->aggregates_.emplace_back(TypeId::INTEGER, BUSTUB_INT32_NULL);
+            break;
+          }
+          Value sum{input.aggregates_[0].GetTypeId(), 0};
+          for (const auto &v : input.aggregates_) {
+            if (!v.IsNull()) {
+              sum.Multiply(v);
+            }
+          }
+          result->aggregates_.push_back(sum);
+          break;
+        }
+        case AggregationType::MinAggregate: {
+          if (input.aggregates_.empty()) {
+            result->aggregates_.emplace_back(TypeId::INTEGER, BUSTUB_INT32_NULL);
+            break;
+          }
+          Value min{input.aggregates_[0]};
+          for (const auto &v : input.aggregates_) {
+            min = min.Min(v);
+          }
+          result->aggregates_.push_back(min);
+          break;
+        }
+        case AggregationType::MaxAggregate: {
+          if (input.aggregates_.empty()) {
+            result->aggregates_.emplace_back(TypeId::INTEGER, BUSTUB_INT32_NULL);
+            break;
+          }
+          Value max{input.aggregates_[0]};
+          for (const auto &v : input.aggregates_) {
+            max = max.Max(v);
+          }
+          result->aggregates_.push_back(max);
+          break;
+        }
       }
     }
   }
@@ -201,8 +254,10 @@ class AggregationExecutor : public AbstractExecutor {
   /** The child executor that produces tuples over which the aggregation is computed */
   std::unique_ptr<AbstractExecutor> child_;
   /** Simple aggregation hash table */
-  // TODO(Student): Uncomment SimpleAggregationHashTable aht_;
+  // TODO(Student): Uncomment
+  SimpleAggregationHashTable aht_;
   /** Simple aggregation hash table iterator */
-  // TODO(Student): Uncomment SimpleAggregationHashTable::Iterator aht_iterator_;
+  // TODO(Student): Uncomment
+  SimpleAggregationHashTable::Iterator aht_iterator_;
 };
 }  // namespace bustub
