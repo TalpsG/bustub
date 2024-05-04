@@ -12,16 +12,53 @@
 
 #pragma once
 
+#include <deque>
 #include <memory>
+#include <unordered_map>
+#include <unordered_set>
 #include <utility>
+#include <vector>
 
+#include "common/util/hash_util.h"
 #include "execution/executor_context.h"
 #include "execution/executors/abstract_executor.h"
+#include "execution/executors/aggregation_executor.h"
 #include "execution/plans/hash_join_plan.h"
 #include "storage/table/tuple.h"
+#include "type/type.h"
 
 namespace bustub {
 
+struct HashKey {
+  std::vector<Value> keys_;
+  auto operator==(const HashKey &key) const -> bool {
+    if (keys_.size() != key.keys_.size()) {
+      return false;
+    }
+    for (size_t i = 0; i < keys_.size(); ++i) {
+      if (keys_[i].CompareEquals(key.keys_[i]) != CmpBool::CmpTrue) {
+        return false;
+      }
+    }
+    return true;
+  }
+};
+struct HashValue {
+  std::vector<Value> values_;
+  bool has_join_{false};
+};
+class MyClassHash {
+ public:
+  auto operator()(const HashKey &obj) const -> std::size_t {
+    size_t curr_hash = 0;
+    for (const auto &key : obj.keys_) {
+      if (!key.IsNull()) {
+        curr_hash = bustub::HashUtil::CombineHashes(curr_hash, bustub::HashUtil::HashValue(&key));
+      }
+    }
+    return curr_hash;
+  }
+};
 /**
  * HashJoinExecutor executes a nested-loop JOIN on two tables.
  */
@@ -54,6 +91,13 @@ class HashJoinExecutor : public AbstractExecutor {
  private:
   /** The NestedLoopJoin plan node to be executed. */
   const HashJoinPlanNode *plan_;
+  std::unique_ptr<AbstractExecutor> left_executor_;
+  std::unique_ptr<AbstractExecutor> right_executor_;
+  std::unordered_map<HashKey, std::deque<HashValue>, MyClassHash> ht_kv_;
+  std::unordered_set<HashKey, MyClassHash> key_set_;
+  std::unordered_multimap<HashKey, HashValue, MyClassHash> ht_k_;
+  std::unordered_multimap<HashKey, HashValue, MyClassHash>::iterator ht_iter_;
+  std::deque<Tuple> results_;
 };
 
 }  // namespace bustub

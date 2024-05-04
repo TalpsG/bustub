@@ -1,0 +1,20 @@
+# task1
+
+# task2
+## aggregation
+实现聚合函数，SimpleAggregationHashTable很重要，
+plan中有三个关于聚合函数的元素
+1. group by
+2. aggregation
+3. aggregation type
+SimpleAggregationHashTable的实现
+就是建立一个hashmap,然后以groupby的结果为key,value则是该该groupby对应的聚合函数结果
+
+
+实现聚合的过程就是向
+SimpleAggregationHashTable中insertcombine,
+key通过makeaggregatekey将childexecutor的tuple转换为groupby的结果得到，
+value也是通过make函数获取到聚合函数所需要的tuple中的values
+在insertcombine内部会自动调用combineaggregatevalue.
+即每次insert后都会调用combineaggregatevalue来计算新的result,也就是hashmap中的value
+

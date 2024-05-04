@@ -24,7 +24,6 @@ void IndexScanExecutor::Init() {
   index_info_ = catalog_->GetIndex(plan_->index_oid_);
   index_ = reinterpret_cast<BPlusTreeIndexForTwoIntegerColumn *>(index_info_->index_.get());
   iter_ = index_->GetBeginIterator();
-  std::cout << "index scan init\n";
 }
 
 auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
@@ -34,7 +33,6 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
       return false;
     }
     *rid = (*iter_).second;
-    std::cout << rid->ToString() << "\n";
     if (rid->GetPageId() == INVALID_PAGE_ID) {
       ++iter_;
       continue;
@@ -47,7 +45,6 @@ auto IndexScanExecutor::Next(Tuple *tuple, RID *rid) -> bool {
     }
   }
   *tuple = catalog_->GetTable(index_info_->table_name_)->table_->GetTuple(*rid).second;
-  std::cout << tuple->ToString(&GetOutputSchema()) << "\n";
   ++iter_;
   return true;
 }

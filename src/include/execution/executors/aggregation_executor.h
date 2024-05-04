@@ -75,61 +75,53 @@ class SimpleAggregationHashTable {
    */
   void CombineAggregateValues(AggregateValue *result, const AggregateValue &input) {
     for (uint32_t i = 0; i < agg_exprs_.size(); i++) {
+      auto &now_result = result->aggregates_[i];
+      auto now_input = input.aggregates_[i];
       switch (agg_types_[i]) {
         case AggregationType::CountStarAggregate: {
-          result->aggregates_.emplace_back(TypeId::INTEGER, input.aggregates_.size());
+          now_result = now_result.Add(ValueFactory::GetIntegerValue(1));
           break;
         }
         case AggregationType::CountAggregate: {
-          if (input.aggregates_.empty()) {
-            result->aggregates_.emplace_back(TypeId::INTEGER, BUSTUB_INT32_NULL);
-            break;
-          }
-          int n = 0;
-          for (const auto &v : input.aggregates_) {
-            if (!v.IsNull()) {
-              n++;
+          if (!now_input.IsNull()) {
+            if (now_result.IsNull()) {
+              now_result = ValueFactory::GetIntegerValue(1);
+            } else {
+              now_result = now_result.Add(ValueFactory::GetIntegerValue(1));
             }
           }
-          result->aggregates_.emplace_back(TypeId::INTEGER, n);
           break;
         }
         case AggregationType::SumAggregate: {
-          if (input.aggregates_.empty()) {
-            result->aggregates_.emplace_back(TypeId::INTEGER, BUSTUB_INT32_NULL);
-            break;
-          }
-          Value sum{input.aggregates_[0].GetTypeId(), 0};
-          for (const auto &v : input.aggregates_) {
-            if (!v.IsNull()) {
-              sum.Multiply(v);
+          if (now_result.IsNull()) {
+            if (!now_input.IsNull()) {
+              now_result = now_input;
+            }
+          } else {
+            if (!now_input.IsNull()) {
+              now_result = now_input.Add(now_result);
             }
           }
-          result->aggregates_.push_back(sum);
           break;
         }
         case AggregationType::MinAggregate: {
-          if (input.aggregates_.empty()) {
-            result->aggregates_.emplace_back(TypeId::INTEGER, BUSTUB_INT32_NULL);
-            break;
+          if (now_result.IsNull()) {
+            now_result = now_input;
+          } else {
+            if (!now_input.IsNull()) {
+              now_result = now_result.Min(now_input);
+            }
           }
-          Value min{input.aggregates_[0]};
-          for (const auto &v : input.aggregates_) {
-            min = min.Min(v);
-          }
-          result->aggregates_.push_back(min);
           break;
         }
         case AggregationType::MaxAggregate: {
-          if (input.aggregates_.empty()) {
-            result->aggregates_.emplace_back(TypeId::INTEGER, BUSTUB_INT32_NULL);
-            break;
+          if (now_result.IsNull()) {
+            now_result = now_input;
+          } else {
+            if (!now_input.IsNull()) {
+              now_result = now_result.Max(now_input);
+            }
           }
-          Value max{input.aggregates_[0]};
-          for (const auto &v : input.aggregates_) {
-            max = max.Max(v);
-          }
-          result->aggregates_.push_back(max);
           break;
         }
       }
@@ -147,6 +139,7 @@ class SimpleAggregationHashTable {
     }
     CombineAggregateValues(&ht_[agg_key], agg_val);
   }
+  void InsertEmpty() { ht_.insert({{std::vector<Value>{}}, GenerateInitialAggregateValue()}); }
 
   /**
    * Clear the hash table

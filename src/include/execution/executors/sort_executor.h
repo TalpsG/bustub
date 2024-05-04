@@ -12,6 +12,7 @@
 
 #pragma once
 
+#include <deque>
 #include <memory>
 #include <vector>
 
@@ -52,5 +53,7 @@ class SortExecutor : public AbstractExecutor {
  private:
   /** The sort plan node to be executed */
   const SortPlanNode *plan_;
+  std::unique_ptr<AbstractExecutor> child_executor_;
+  std::deque<Tuple> result_;
 };
 }  // namespace bustub

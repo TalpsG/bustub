@@ -26,14 +26,11 @@ namespace bustub {
 
 InsertExecutor::InsertExecutor(ExecutorContext *exec_ctx, const InsertPlanNode *plan,
                                std::unique_ptr<AbstractExecutor> &&child_executor)
-    : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {
-  std::cout << "insert ctor\n";
-}
+    : AbstractExecutor(exec_ctx), plan_(plan), child_executor_(std::move(child_executor)) {}
 
 void InsertExecutor::Init() {
   child_executor_->Init();
   is_first_ = true;
-  std::cout << "insert init\n";
 }
 
 auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
@@ -51,7 +48,6 @@ auto InsertExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
       rd = option_rid.value();
     }
     for (auto index : indices) {
-      std::cout << tp.GetRid().ToString() << "\n";
       index->index_->InsertEntry(
           tp.KeyFromTuple(child_plan->OutputSchema(), index->key_schema_, index->index_->GetKeyAttrs()), rd,
           exec_ctx_->GetTransaction());

@@ -12,7 +12,10 @@
 
 #pragma once
 
+#include <deque>
+#include <functional>
 #include <memory>
+#include <queue>
 #include <utility>
 #include <vector>
 
@@ -63,5 +66,6 @@ class TopNExecutor : public AbstractExecutor {
   const TopNPlanNode *plan_;
   /** The child executor from which tuples are obtained */
   std::unique_ptr<AbstractExecutor> child_executor_;
+  std::deque<Tuple> results_;
 };
 }  // namespace bustub

@@ -1,4 +1,5 @@
 #include "execution/executors/filter_executor.h"
+#include <iostream>
 #include "common/exception.h"
 #include "type/value_factory.h"
 

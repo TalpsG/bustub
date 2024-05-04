@@ -12,6 +12,8 @@
 #include <iostream>
 #include <memory>
 #include <vector>
+#include "execution/plans/aggregation_plan.h"
+#include "type/type.h"
 
 #include "execution/executors/aggregation_executor.h"
 
@@ -23,23 +25,41 @@ AggregationExecutor::AggregationExecutor(ExecutorContext *exec_ctx, const Aggreg
       plan_(plan),
       child_(std::move(child)),
       aht_(plan_->GetAggregates(), plan_->GetAggregateTypes()),
-      aht_iterator_(aht_.Begin()) {
-  std::cout << "agg ctor\n";
-}
+      aht_iterator_(aht_.Begin()) {}
 
-void AggregationExecutor::Init() { std::cout << "agg init\n"; }
-
-auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+void AggregationExecutor::Init() {
   child_->Init();
-  aht_iterator_ = aht_.Begin();
+  aht_.Clear();
+  auto group_by = plan_->group_bys_;
+  auto agg = plan_->aggregates_;
   Tuple tp;
   RID id;
-  std::vector<Value> result;
-  std::vector<std::vector<Value>> input;
+  bool empty_table = true;
   while (child_->Next(&tp, &id)) {
-    std::cout << tp.ToString(&GetOutputSchema()) << '\n';
+    empty_table = false;
+    aht_.InsertCombine(MakeAggregateKey(&tp), MakeAggregateValue(&tp));
   }
-  return false;
+  if (empty_table) {
+    if (group_by.empty()) {
+      aht_.InsertEmpty();
+    }
+  }
+  aht_iterator_ = aht_.Begin();
+}
+
+auto AggregationExecutor::Next(Tuple *tuple, RID *rid) -> bool {
+  if (aht_iterator_ == aht_.End()) {
+    return false;
+  }
+  auto result_value = aht_iterator_.Val().aggregates_;
+  auto result = aht_iterator_.Key().group_bys_;
+  for (const auto &i : result_value) {
+    result.push_back(i);
+  }
+  *tuple = Tuple{result, &GetOutputSchema()};
+  *rid = tuple->GetRid();
+  ++aht_iterator_;
+  return true;
 }
 
 auto AggregationExecutor::GetChildExecutor() const -> const AbstractExecutor * { return child_.get(); }
