@@ -29,6 +29,14 @@ auto Insert(Transaction *txn, BustubInstance &instance, int v1) -> void {
   instance.ExecuteSqlTxn(sql, writer, txn);
   ASSERT_EQ(ss.str(), "3,\n");
 }
+auto TalpsAbortInsert(Transaction *txn, BustubInstance &instance, int v1) -> void {
+  std::stringstream ss;
+  auto writer = bustub::SimpleStreamWriter(ss, true, ",");
+  fmt::print(stderr, "insert data with v1 = {} in txn {} {}\n", v1, txn->GetTransactionId(), txn->GetIsolationLevel());
+  std::string sql = fmt::format("INSERT INTO t1 VALUES ({}, 1), ({}, 2), ({}, 3)", v1, v1, v1);
+  instance.ExecuteSqlTxn(sql, writer, txn);
+  ASSERT_EQ(ss.str(), "3,\n");
+}
 
 auto Delete(Transaction *txn, BustubInstance &instance, int v1) -> void {
   std::stringstream ss;
@@ -111,6 +119,15 @@ auto GetDbForCommitAbortTest(const std::string &name) -> std::shared_ptr<BustubI
   return instance;
 }
 
+auto GetDbForTalpsAbortTest(const std::string &name) -> std::shared_ptr<BustubInstance> {
+  auto instance = std::make_unique<BustubInstance>();
+  auto writer = bustub::SimpleStreamWriter(std::cout, true);
+  fmt::print(stderr, "--- TEST CASE {} ---\n", name);
+  fmt::print(stderr, "prepare\n");
+  instance->ExecuteSql("CREATE TABLE t1(v1 int, v2 int);", writer);
+  instance->ExecuteSql("INSERT INTO t1 VALUES (233, 1), (233, 2), (233, 3), (234, 1), (234, 2), (234, 3)", writer);
+  return instance;
+}
 enum class ExpectedOutcome {
   DirtyRead,
   Read,

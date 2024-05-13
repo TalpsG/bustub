@@ -15,6 +15,7 @@
 #include <vector>
 
 #include "common_checker.h"  // NOLINT
+#include "concurrency/transaction.h"
 
 namespace bustub {
 
@@ -55,4 +56,22 @@ TEST(IsolationLevelTest, DISABLED_InsertTestA) {
                ExpectedOutcome::DirtyRead);
 }
 
+TEST(AbortTest, talps_abort_test) {
+  auto db = GetDbForTalpsAbortTest("TalpsAbortTest");
+  auto txn1 = Begin(*db, IsolationLevel::READ_UNCOMMITTED);
+  TalpsAbortInsert(txn1, *db, 5);
+  Abort(*db, txn1);
+
+  // std::thread thread_txn1([&]() {
+  //   TalpsAbortInsert(txn1, *db, 5);
+  //   std::this_thread::sleep_for(std::chrono::seconds(1));
+  //   Abort(*db, txn1);
+  // });
+  // std::thread thread_txn2([&]() {
+  //   std::this_thread::sleep_for(std::chrono::milliseconds(100));
+  //   Scan(txn2, *db, {5});
+  // });
+  // thread_txn1.join();
+  // thread_txn2.join();
+}
 }  // namespace bustub

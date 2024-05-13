@@ -31,32 +31,33 @@ void DeleteExecutor::Init() {
   catalog_ = exec_ctx_->GetCatalog();
   table_ = catalog_->GetTable(plan_->table_oid_);
   child_executor_->Init();
-  first_ = true;
+  done_ = false;
 }
 
 auto DeleteExecutor::Next([[maybe_unused]] Tuple *tuple, RID *rid) -> bool {
-  auto indices = catalog_->GetTableIndexes(table_->name_);
-  Tuple tp;
-  RID id;
+  if (done_) {
+    return false;
+  }
   int num = 0;
-  while (child_executor_->Next(&tp, &id)) {
-    auto meta = table_->table_->GetTupleMeta(tp.GetRid());
+  auto indices = catalog_->GetTableIndexes(table_->name_);
+  while (child_executor_->Next(tuple, rid)) {
+    auto meta = table_->table_->GetTupleMeta(tuple->GetRid());
     meta.is_deleted_ = true;
-    table_->table_->UpdateTupleMeta(meta, tp.GetRid());
-    num++;
+    table_->table_->UpdateTupleMeta(meta, tuple->GetRid());
+    auto write_record = TableWriteRecord(table_->oid_, tuple->GetRid(), table_->table_.get());
+    write_record.wtype_ = WType::DELETE;
+    exec_ctx_->GetTransaction()->AppendTableWriteRecord(write_record);
     for (auto index : indices) {
       index->index_->DeleteEntry(
-          tp.KeyFromTuple(child_executor_->GetOutputSchema(), index->key_schema_, index->index_->GetKeyAttrs()),
-          tp.GetRid(), exec_ctx_->GetTransaction());
+          tuple->KeyFromTuple(child_executor_->GetOutputSchema(), index->key_schema_, index->index_->GetKeyAttrs()),
+          tuple->GetRid(), exec_ctx_->GetTransaction());
     }
-  }
-  if (num == 0 && !first_) {
-    return false;
+    num++;
   }
   std::vector<Value> values{};
   values.emplace_back(TypeId::INTEGER, num);
   *tuple = Tuple{values, &GetOutputSchema()};
-  first_ = false;
+  done_ = true;
   return true;
 }
 

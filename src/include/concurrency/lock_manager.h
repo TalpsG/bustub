@@ -17,6 +17,7 @@
 #include <list>
 #include <memory>
 #include <mutex>  // NOLINT
+#include <set>
 #include <unordered_map>
 #include <unordered_set>
 #include <utility>
@@ -65,7 +66,7 @@ class LockManager {
   class LockRequestQueue {
    public:
     /** List of lock requests for the same resource (table or row) */
-    std::list<LockRequest *> request_queue_;
+    std::list<std::shared_ptr<LockRequest>> request_queue_;
     /** For notifying blocked transactions on this rid */
     std::condition_variable cv_;
     /** txn_id of an upgrading transaction (if any) */
@@ -308,13 +309,20 @@ class LockManager {
   auto RunCycleDetection() -> void;
 
   TransactionManager *txn_manager_;
+  void DeleteTxnLockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid);
+  void InsertTxnLockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid);
+  void DeleteTxnLockRow(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid);
+  void InsertTxnLockRow(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid);
+  auto AreLocksCompatible(LockMode l1, LockMode l2) -> bool;
+  auto GrantAllowed(Transaction *txn, const std::shared_ptr<LockRequestQueue> &lock_request_queue, LockMode lock_mode)
+      -> bool;
+  void ThrowAbort(Transaction *txn, AbortReason abort_reason);
 
  private:
   /** Spring 2023 */
   /* You are allowed to modify all functions below. */
   auto UpgradeLockTable(Transaction *txn, LockMode lock_mode, const table_oid_t &oid) -> bool;
   auto UpgradeLockRow(Transaction *txn, LockMode lock_mode, const table_oid_t &oid, const RID &rid) -> bool;
-  auto AreLocksCompatible(LockMode l1, LockMode l2) -> bool;
   auto CanTxnTakeLock(Transaction *txn, LockMode lock_mode) -> bool;
   void GrantNewLocksIfPossible(LockRequestQueue *lock_request_queue);
   auto CanLockUpgrade(LockMode curr_lock_mode, LockMode requested_lock_mode) -> bool;
@@ -322,7 +330,7 @@ class LockManager {
   auto FindCycle(txn_id_t source_txn, std::vector<txn_id_t> &path, std::unordered_set<txn_id_t> &on_path,
                  std::unordered_set<txn_id_t> &visited, txn_id_t *abort_txn_id) -> bool;
   void UnlockAll();
-
+  auto Dfs(std::vector<txn_id_t> visited, std::vector<txn_id_t> keys, txn_id_t *abort_txn_id) -> bool;
   /** Structure that holds lock requests for a given table oid */
   std::unordered_map<table_oid_t, std::shared_ptr<LockRequestQueue>> table_lock_map_;
   /** Coordination */
